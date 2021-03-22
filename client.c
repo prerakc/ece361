@@ -18,7 +18,7 @@ int login(char *args, int *socketfd_p, pthread_t *receive_thread_p);
 int logout(int *socketfd_p, pthread_t *receive_thread_p);
 int join_session(char *args, int *socketfd_p);
 int leave_session(int socketfd);
-int create_session(int socketfd);
+int create_session(char *args, int *socketfd_p);
 int list(int socketfd);
 int message(int socketfd);
 
@@ -57,7 +57,7 @@ int main (int argc, char **argv) {
 		} else if (strcmp(cmd, "/leavesession") == 0) {
 			leave_session(socketfd);
 		} else if (strcmp(cmd, "/createsession") == 0) {
-			create_session(socketfd);
+			create_session(tmp, &socketfd);
 		} else if (strcmp(cmd, "/list") == 0) {
 			list(socketfd);
 		} else if (strcmp(cmd, "/quit") == 0) {
@@ -327,8 +327,8 @@ int leave_session(int socketfd) {
 	return 0;
 }
 
-int create_session(int socketfd) {
-	if (socketfd == INVALID_SOCKET) {
+int create_session(char *args, int *socketfd_p) {
+	if (*socketfd_p == INVALID_SOCKET) {
 		printf("Not logged into any server.\n");
 		return -1;
 	} else if (in_session == 1) {
@@ -336,15 +336,23 @@ int create_session(int socketfd) {
 		return -1;
 	}
 	
+	char *session_id = args;
+	
+	if (session_id == NULL) {
+		fprintf(stderr, "usage: /createsession <session_id>\n");
+		return -1;
+	}
+	
 	int numbytes;
 	Packet packet;
   
 	packet.type = NEW_SESS;
-	packet.size = 0;
+	memcpy(packet.data, session_id, MAX_DATA);
+    packet.size = strlen(packet.data);
 	
 	packetToString(&packet, buf);
 	
-	if ((numbytes = send(socketfd, buf, BUF_SIZE - 1, 0)) == -1) {
+	if ((numbytes = send(*socketfd_p, buf, BUF_SIZE - 1, 0)) == -1) {
 		fprintf(stderr, "client: send\n");
 		return -1; 
 	}

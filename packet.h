@@ -22,9 +22,9 @@
 #define QUERY 12
 #define QU_ACK 13
 
-typedef struct lab3message {
-    unsigned int type;  // msgType
-    unsigned int size;  // Size of data
+typedef struct message {
+    unsigned int type;
+    unsigned int size;
     unsigned char source[MAX_NAME];
     unsigned char data[MAX_DATA];
 } Packet;
@@ -33,78 +33,27 @@ typedef struct lab3message {
 /* Convert packet to fixed size string, with attributes separated
  * by colons
  */
-void packetToString(const Packet *packet, char *dest) {
-    
-    //Initialize string buffer
+void packetToString(Packet *packet, char *dest) {
     memset(dest, 0, sizeof(char) * BUF_SIZE);
-
-    // Load data into string
-    int cursor = 0;
-    sprintf(dest, "%d", packet -> type);
-    cursor = strlen(dest);
-    memcpy(dest + cursor++, ":", sizeof(char));
-
-    sprintf(dest + cursor, "%d", packet -> size);
-    cursor = strlen(dest);
-    memcpy(dest + cursor++, ":", sizeof(char));
-
-    // Copy only valid part of strings so as to support regex
-    sprintf(dest + cursor, "%s", packet -> source);
-    cursor = strlen(dest);
-    memcpy(dest + cursor++, ":", sizeof(char));
-
-    memcpy(dest + cursor, packet -> data, strlen((char *)(packet -> data)));
-    cursor = strlen(dest);
+	snprintf(dest, BUF_SIZE, "%d:%d:%s:%s", packet->type, packet->size, packet->source, packet->data);
 }
 
-
 // Convert str to packet
-void stringToPacket(const char *str, Packet *dest_packet) {
-    
-    memset(dest_packet -> data, 0, MAX_DATA);
-    if(strlen(str) == 0) return;
-
-    // Compile Regex to match ":"
-    regex_t regex;
-    if(regcomp(&regex, "[:]", REG_EXTENDED)) {
-        fprintf(stderr, "Could not compile regex\n");
-    }
-
-    // Match regex to find ":" 
-    regmatch_t pmatch[1];
-    int cursor = 0;
-    const int regBfSz = MAX_DATA;
-    char buf[regBfSz];     // Temporary buffer for regex matching        
-
-    // Match type
-    if(regexec(&regex, str + cursor, 1, pmatch, REG_NOTBOL)) {
-        fprintf(stderr, "Error matching regex\n");
-        exit(1);
-    }
-    memset(buf, 0, regBfSz * sizeof(char));
-    memcpy(buf, str + cursor, pmatch[0].rm_so);
-    dest_packet -> type = atoi(buf);
-    cursor += (pmatch[0].rm_so + 1);
-
-    // Match size
-    if(regexec(&regex, str + cursor, 1, pmatch, REG_NOTBOL)) {
-        fprintf(stderr, "Error matching regex\n");
-        exit(1);
-    }
-    memset(buf, 0, regBfSz * sizeof(char));
-    memcpy(buf, str + cursor, pmatch[0].rm_so);
-    dest_packet -> size = atoi(buf);
-    cursor += (pmatch[0].rm_so + 1);
-
-    // Match source
-    if(regexec(&regex, str + cursor, 1, pmatch, REG_NOTBOL)) {
-        fprintf(stderr, "Error matching regex\n");
-        exit(1);
-    }
-    memcpy(dest_packet -> source, str + cursor, pmatch[0].rm_so);
-    dest_packet -> source[pmatch[0].rm_so] = 0;
-    cursor += (pmatch[0].rm_so + 1);
-
-    // Match data
-    memcpy(dest_packet -> data, str + cursor, dest_packet -> size);
+void stringToPacket(char *str, Packet *dest_packet) {
+	memset(dest_packet -> data, 0, MAX_DATA);
+	
+	if (strlen(str) == 0) return;
+	
+	char *tmp = calloc(1, BUF_SIZE);
+	memcpy(tmp, str, BUF_SIZE);
+	
+	dest_packet->type = atoi(strsep(&tmp, ":"));
+	dest_packet->size = atoi(strsep(&tmp, ":"));
+	
+	if (dest_packet->size == 0) {
+		return;
+	}
+	
+	strcpy(dest_packet->source, strsep(&tmp, ":"));
+	strcpy(dest_packet->data, tmp);
 }
