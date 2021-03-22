@@ -223,7 +223,7 @@ int login(char *args, int *socketfd_p, pthread_t *receive_thread_p) {
 		return 0;
     }
 	
-	printf("Login failed. Recieved packet of type %s containing: %s\n", packet.type, packet.data);
+	printf("Login failed. Recieved packet of type %d containing: %s\n", packet.type, packet.data);
 	close(*socketfd_p);
     *socketfd_p = INVALID_SOCKET;
 	
