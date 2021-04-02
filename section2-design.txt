@@ -1,0 +1,15 @@
+Feature 1: Multiple sessions
+- Server:
+	- User struct now holds an array of joined sessions
+	- When joining a session, the server makes sure the user is not already in it
+	- Leaving a session now requires a session id and returns a packet:
+		- When leaving a session, the server does the following:
+			1. Does the session exist? -> return NAK if it doesnn't
+			2. Is the user in the session> -> return NAK if they aren't
+			3. Leave the session and return an ACK
+	- Logout leaves all sessions and doesn't return any acknowledgements to the client
+- Client:
+	- The client has a counter that keeps track of how many sessions they are in
+	- Recieve thread now handles the LS_NAK and LS_ACK packets
+
+Feature 2: Timeout
