@@ -450,11 +450,78 @@ void message (int sockfd, Packet packet, Packet ret) {
 			if (users[found].curr[j]->session_users[i] == NULL) {
 				continue;
 			}
+
+			if (users[found].curr[j]->session_users[i]->sockfd == sockfd) {
+				continue;
+			}
 			
 			if ((numbytes = send(users[found].curr[j]->session_users[i]->sockfd, buf, BUF_SIZE - 1, 0)) == -1) {
 				fprintf(stderr, "client: send\n");
 			}
 		}
+	}
+}
+
+void whisper (int sockfd, Packet packet, Packet ret) {	
+	int found = -1;
+	for (int i = 0; i < USER_NUM; i++) {
+		if (users[i].sockfd == sockfd) {
+			found = i;
+			break;
+		}
+	}
+	
+	int user_exists = -1;
+	for (int i = 0; i < USER_NUM; i++) {
+		if (strcmp(users[i].name, packet.source) == 0) {
+			user_exists = i;
+			break;
+		}
+	}
+
+	int numbytes;
+
+	if (user_exists == -1) {
+		ret.type = W_NAK;
+		strcpy(ret.data, "User does not exist\n");
+		ret.size = strlen(ret.data);
+
+		packet_to_string(&ret, buf);
+
+		if ((numbytes = send(sockfd, buf, BUF_SIZE - 1, 0)) == -1) {
+			fprintf(stderr, "server: send\n");
+		}
+
+		return;
+	}
+
+	if (users[user_exists].active == 0) {
+		ret.type = W_NAK;
+		strcpy(ret.data, "User not logged in\n");
+		ret.size = strlen(ret.data);
+
+		packet_to_string(&ret, buf);
+
+		if ((numbytes = send(sockfd, buf, BUF_SIZE - 1, 0)) == -1) {
+			fprintf(stderr, "server: send\n");
+		}
+
+		return;
+	}
+
+	ret.type = MESSAGE;
+	strcpy(ret.data, packet.data);
+	ret.size = strlen(ret.data);
+	
+	memset(ret.source, 0, MAX_NAME);
+	strcpy(ret.source, users[found].name);
+	strcat(ret.source, " ");
+	strcat(ret.source, "private");
+
+	packet_to_string(&ret, buf);
+
+	if ((numbytes = send(users[user_exists].sockfd, buf, BUF_SIZE - 1, 0)) == -1) {
+		fprintf(stderr, "client: send\n");
 	}
 }
 
@@ -627,6 +694,8 @@ int main(int argc, char **argv) {
 							list(i, packet, ret);
 						} else if (packet.type == MESSAGE) {
 							message(i, packet, ret);
+						} else if (packet.type == WHISPER) {
+							whisper(i, packet, ret);
 						}
                     }
                 } // END handle data from client

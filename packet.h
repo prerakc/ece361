@@ -25,6 +25,10 @@
 #define MESSAGE 13
 #define QUERY 14
 #define QU_ACK 15
+#define WHISPER 16
+#define W_ACK 17
+#define W_NAK 18
+
 
 typedef struct message {
     unsigned int type;

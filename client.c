@@ -18,6 +18,8 @@ int leave_session(char *args, int sockfd);
 int create_session(char *args, int *sockfd_p);
 int list(int sockfd);
 int message(int sockfd);
+int whisper(char *args, int sockfd);
+
 
 char buf[BUF_SIZE];
 int num_sessions = 0;
@@ -54,6 +56,8 @@ int main (int argc, char **argv) {
 		} else if (strcmp(cmd, "/quit") == 0) {
 			err = logout(&sockfd, &receive_thread);
 			break;
+		} else if (strcmp(cmd, "/whisper") == 0) {
+			err = whisper(tmp, sockfd);
 		} else {
 			err = message(sockfd);
 		}
@@ -125,6 +129,10 @@ void *receive(void *sockfd_p) {
 				
 			case QU_ACK:
 				printf("User id\t\tSession ids\n%s", packet.data);
+				break;
+
+			case W_NAK:
+				printf("Failed to send private message because %s\n", packet.data);
 				break;
 				
 			default:
@@ -361,6 +369,11 @@ int create_session(char *args, int *sockfd_p) {
 		return -1;
 	}
 	
+	if (strcmp(session_id, "private") == 0) {
+		fprintf(stderr, "session id cannot be 'private'\n");
+		return -1;
+	}
+
 	int numbytes;
 	Packet packet;
   
@@ -424,4 +437,42 @@ int message(int sockfd) {
 	}
 	
 	return 0;	
+}
+
+int whisper(char *args, int sockfd) {
+	if (sockfd == -1) {
+		printf("Not logged into any server.\n");
+		return -1;
+	}
+
+	if (args == NULL) {
+		fprintf(stderr, "usage: /whisper <user_id> <message>\n");
+		return -1;
+	}
+
+	char *user_id = strsep(&args, " ");
+
+	if (args == NULL) {
+		fprintf(stderr, "usage: /whisper <user_id> <message>\n");
+		return -1;
+	}
+
+	char *msg = args;
+	
+	int numbytes;
+	Packet packet;
+		
+	packet.type = WHISPER;
+	memcpy(packet.source, user_id, MAX_DATA);
+	memcpy(packet.data, msg, MAX_DATA);
+	packet.size = strlen(packet.data);
+		
+	packet_to_string (&packet, buf);
+
+	if ((numbytes = send(sockfd, buf, BUF_SIZE - 1, 0)) == -1) {
+		fprintf(stderr, "client: send\n");
+		return -1; 
+	}
+	
+	return 0;
 }
